@@ -1,12 +1,117 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tejdeep Chippa | Resume</title>
-  </head>
-  <body class="bg-white dark:bg-neutral-950">
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <title>Tejdeep Chippa — Resume</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Minimal styles -->
+  <style>
+    :root {
+      --ink:#111; --bg:#f5f6f7; --bar:#e9eaec;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--ink); font: 14px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; background: #fff; border-bottom: 1px solid var(--bar);
+    }
+    .topbar .spacer { flex: 1; }
+    .btn {
+      appearance: none; border: 1px solid #d0d4d9; background: #fff;
+      padding: 6px 10px; border-radius: 10px; font-size: 12px; cursor: pointer;
+    }
+    .frame {
+      max-width: 210mm; margin: 14px auto; background: #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 12px 30px rgba(0,0,0,.10);
+    }
+    .canvas-wrap { position: relative; width: 100%; }
+    canvas { display: block; width: 100%; height: auto; }
+
+    /* Print: true A4 with no extra margins */
+    @page { size: A4; margin: 0; }
+    @media print {
+      body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .topbar, .shadow-hide { display: none !important; }
+      .frame { box-shadow: none; margin: 0 auto; }
+    }
+
+    /* Small helper to denote loading state */
+    .loading { text-align: center; color: #666; padding: 24px; }
+    .error { color: #b00020; text-align: center; padding: 24px; }
+  </style>
+
+  <!-- PDF.js (ESM) from CDN -->
+  <script type="module">
+    import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs";
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.min.mjs";
+
+    const url = "./resume.pdf"; // or "./Tejdeep_Resume.pdf" if you didn't rename
+
+    const container = document.getElementById("canvas-container");
+    const status = document.getElementById("status");
+    function copyLink(){ navigator.clipboard.writeText(window.location.href).then(()=>alert("Link copied")); }
+    window.__copyLink = copyLink;
+    window.__print = () => window.print();
+
+    async function renderPDF() {
+        try {
+        status.textContent = "Loading…";
+        const pdf = await pdfjsLib.getDocument(url).promise;
+        status.textContent = "";
+
+        const DPR = Math.max(1, window.devicePixelRatio || 1);
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 1 });
+            const cssWidthPx = document.querySelector(".frame").clientWidth || 794;
+            const scale = cssWidthPx / viewport.width;
+            const scaledViewport = page.getViewport({ scale });
+
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d", { alpha: false });
+            canvas.width = Math.floor(scaledViewport.width * DPR);
+            canvas.height = Math.floor(scaledViewport.height * DPR);
+            canvas.style.width = scaledViewport.width + "px";
+            canvas.style.height = scaledViewport.height + "px";
+
+            await page.render({
+            canvasContext: ctx,
+            viewport: scaledViewport.clone({ scale: scaledViewport.scale * DPR })
+            }).promise;
+
+            const wrap = document.createElement("div");
+            wrap.className = "canvas-wrap";
+            wrap.appendChild(canvas);
+            container.appendChild(wrap);
+        }
+        } catch (e) {
+        console.error(e);
+        status.className = "error";
+        status.textContent = "Failed to load resume.pdf (check filename/path & server).";
+        }
+    }
+
+    renderPDF();
+    window.addEventListener("resize", () => { container.innerHTML = ""; renderPDF(); });
+    </script>
+
+</head>
+<body>
+  <div class="topbar">
+    <div><strong>Tejdeep Chippa — Resume</strong></div>
+    <div class="spacer"></div>
+    <button class="btn" onclick="__print()">Print / Save PDF</button>
+    <button class="btn" onclick="__copyLink()">Copy Link</button>
+  </div>
+
+  <div class="frame">
+    <div id="status" class="loading">Loading…</div>
+    <div id="canvas-container"></div>
+  </div>
+</body>
 </html>
